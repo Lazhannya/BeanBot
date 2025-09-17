@@ -1,0 +1,14 @@
+# Core Discord API library
+discord.py>=2.6.3
+
+# Environment variable management
+python-dotenv>=1.1.1
+
+# These are common dependencies that might be needed on a server
+# You can add or remove based on your specific needs
+setuptools>=68.0.0
+wheel>=0.40.0
+
+# Optional: Useful for deployment and monitoring
+# psutil>=5.9.5
+# APScheduler>=3.10.4
