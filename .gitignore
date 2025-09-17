@@ -1,1 +1,10 @@
 .env
+bin
+beanbot.egg-info
+include
+lib
+lib64
+discord.log
+pyvenv.cfg
+pyproject.toml
+activate.sh
