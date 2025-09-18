@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 import logging
 import os
+import datetime
 from dotenv import load_dotenv
 
 # Local modules
@@ -61,4 +62,13 @@ token = os.getenv('DISCORD_TOKEN')
 dog_reminder_instance = dog_reminder.setup(bot)
 
 # Run the bot
-bot.run(token, log_handler=handler, log_level=logging.DEBUG)
+try:
+    bot.run(token, log_handler=handler, log_level=logging.DEBUG)
+except Exception as e:
+    print(f"Error running bot: {e}")
+    # Log the error to a file for debugging on the server
+    with open("error_log.txt", "a") as f:
+        import traceback
+        f.write(f"Error occurred at {datetime.datetime.now()}: {str(e)}\n")
+        f.write(traceback.format_exc())
+        f.write("\n---\n")

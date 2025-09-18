@@ -18,37 +18,44 @@ class DogReminder:
         self.evening_time = datetime.time(hour=20, minute=0)  # 20:00
         self.timeout = 60 * 60  # 1 hour timeout in seconds
         self.pending_reminders = {}
+        self._task = None
         
-    def start(self):
-        """Start the dog reminder task"""
-        self.dog_reminder_task.start()
+    async def start(self):
+        """Start the dog reminder task - MUST be called from an async context"""
+        # Define the task check function in on_ready
+        self._task = self.bot.loop.create_task(self._reminder_loop())
         
     def cog_unload(self):
         """Clean up when the cog is unloaded"""
-        self.dog_reminder_task.cancel()
-        
-    @tasks.loop(minutes=1)  # Check every minute
-    async def dog_reminder_task(self):
-        """Task to check and send dog reminders at scheduled times"""
-        now = datetime.datetime.now().time()
-        current_hour, current_minute = now.hour, now.minute
-        
-        # Check for morning reminder
-        if current_hour == self.morning_time.hour and current_minute == self.morning_time.minute:
-            await self.send_dog_reminder("morning")
-        
-        # Check for noon reminder
-        if current_hour == self.noon_time.hour and current_minute == self.noon_time.minute:
-            await self.send_dog_reminder("noon")
-        
-        # Check for evening reminder
-        if current_hour == self.evening_time.hour and current_minute == self.evening_time.minute:
-            await self.send_dog_reminder("evening")
-    
-    @dog_reminder_task.before_loop
-    async def before_dog_reminder(self):
-        """Wait until the bot is ready before starting the task"""
+        if self._task:
+            self._task.cancel()
+            
+    async def _reminder_loop(self):
+        """The main reminder loop that replaces the tasks decorator"""
         await self.bot.wait_until_ready()
+        print("Dog reminder loop started!")
+        
+        while not self.bot.is_closed():
+            # Check current time
+            now = datetime.datetime.now().time()
+            current_hour, current_minute = now.hour, now.minute
+            
+            # Check for morning reminder
+            if current_hour == self.morning_time.hour and current_minute == self.morning_time.minute:
+                await self.send_dog_reminder("morning")
+            
+            # Check for noon reminder
+            if current_hour == self.noon_time.hour and current_minute == self.noon_time.minute:
+                await self.send_dog_reminder("noon")
+            
+            # Check for evening reminder
+            if current_hour == self.evening_time.hour and current_minute == self.evening_time.minute:
+                await self.send_dog_reminder("evening")
+                
+            # Wait for a minute before checking again
+            await asyncio.sleep(60)
+        
+    # Removed tasks decorator and replaced with _reminder_loop above
     
     async def send_dog_reminder(self, time_of_day):
         """Send a dog reminder to the configured user"""
@@ -172,6 +179,19 @@ def setup(bot):
     """Create and register the dog reminder commands"""
     dog_reminder = DogReminder(bot)
     
+    # Add a modified on_ready handler to start the reminders
+    original_on_ready = bot.event(bot.on_ready)
+    
+    @bot.event
+    async def on_ready():
+        # Call the original on_ready if it exists
+        if original_on_ready:
+            await original_on_ready()
+        
+        # Start the dog reminder task
+        await dog_reminder.start()
+        print("Dog reminder loop started from on_ready")
+    
     @bot.command(name="setdogreminder")
     @commands.is_owner()  # Only the bot owner can use this command
     async def set_dog_reminder(ctx, user_id: int = None):
@@ -246,18 +266,5 @@ def setup(bot):
             
         dog_reminder.timeout = minutes * 60  # Convert minutes to seconds
         await ctx.send(f"Reminder timeout set to {minutes} minutes.")
-    
-    # We'll start the task in on_ready event instead of here
-    # Register an on_ready event to start the reminder task
-    @bot.event
-    async def on_ready_dog_reminder():
-        # Wait until the bot is ready
-        await bot.wait_until_ready()
-        # Start the dog reminder task
-        dog_reminder.start()
-        print("Dog reminder task started")
-    
-    # Queue the on_ready event to be run after bot is ready
-    bot.loop.create_task(on_ready_dog_reminder())
     
     return dog_reminder
