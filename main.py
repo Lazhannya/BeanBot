@@ -55,6 +55,7 @@ async def on_message(message):
 
     msg_content = message.content.lower()
     how_are_phrases = ["how are you", "how is", "hows it going", "how's it going", "how are"]
+    employer_phrases = ["employer", "regiocom", "workplace", "coworkers"]
 
     # Log some information about the message context
     print(f"Message is in guild: {message.guild}, channel: {message.channel}")
@@ -75,11 +76,74 @@ async def on_message(message):
         else:
             await message.channel.send(f'You are a bottom, {message.author.mention}!')
     
-    if "love you" in msg_content:
+    if "i love" in msg_content:
         await message.channel.send(f'I love you too, {message.author.mention}! <3')
 
-    if "fuck you" in msg_content or "i hate you" in msg_content:
+    if "fuck you" in msg_content or "hate you" in msg_content:
         await message.channel.send(f'Fuck you too, {message.author.mention}!')
+
+    if "based" in msg_content:
+        await message.channel.send('Based on what?')
+
+    if "weh" in msg_content:
+        # Count occurrences of "weh" in the message
+        weh_count = msg_content.count("weh")
+        # Create a response with "weh" repeated that many times
+        response = " ".join(["weh"] * weh_count)
+        await message.channel.send(response)
+
+    if any(phrase in msg_content for phrase in employer_phrases):
+        await message.channel.send('Screw those guys.')
+
+    if "left" in msg_content:
+        await message.channel.send('What\'s left?')
+    if "right" in msg_content:
+        await message.channel.send('What\'s right?')
+    if "wrong" in msg_content:
+        await message.channel.send('What\'s wrong?')
+    if "up" in msg_content:
+        await message.channel.send('Whattap')
+    if "down" in msg_content:
+        await message.channel.send('I\'m down')
+
+    if "wait" in msg_content:
+        await message.channel.send('Waiting...')
+
+    if "chaos" in msg_content:
+        to_kill_chaos = [
+            "we are here to kill chaos",
+            "we must kill chaos", "my quest is to kill chaos", 
+            "chaos will die", "i can't fucking stand chaos", "he pisses me off", 
+            "chaos won't escape", "chaos killed my wife and fucked my dog and recorded it", 
+            "chaos is a loser nerd with no friends",
+            "this is the shrine of chaos", 
+            "mom said it's my turn to kill chaos",
+            "we are here to kill chaos",
+            "chaos...that's my mission.", 
+            "i hate chaos so much it's unreal", 
+            "i want to kill chaos",
+            "i can smell chaos so i think he's around",
+            "i just shit my pants", 
+            "he's here...chaos", 
+            "chaos pissed on my doormat. he was trying to draw his own face with it.", 
+            "chaos is the speed eating champion in scranton pennsylvania chalupa division",
+            "i won't rest until chaos is defeated",
+            "chaos hates capitalism and yet he participates in it. ironic.", 
+            "chaos... fucking piece of shit.", 
+            "i hate that guy.",
+            "chaos bought the last skylander at my local toys r us even though he knew i wanted it.", 
+            "i'm going to kill chaos", 
+            "chaos can't even bench one plate", 
+            "i know that chaos is here", 
+            "chaos is team edward but i haven't seen twilight yet so i don't know if i'll agree with that.", 
+            "this is the end for chaos", 
+            "chaos won't stand in my path", 
+            "chaos does a lot of volunteer work", 
+            "chaos makes a big impact in his community... fucking piece of shit", 
+            "i hope chaos doesn't think my shirt is weird his opinion means a lot to me.", 
+            "chaos downloaded a bunch of dolphin porn onto my computer, that's how come its on there.", 
+        ]
+        await message.channel.send(random.choice(to_kill_chaos))
 
  # Check if the message contains any of the target phrases
         
