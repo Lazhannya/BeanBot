@@ -1,0 +1,50 @@
+2025-09-18 13:43:32,094 - dog_reminder - INFO - DogReminder initialized
+2025-09-18 13:43:35,101 - dog_reminder - INFO - Dog reminder started from on_ready event
+2025-09-18 13:43:35,101 - dog_reminder - INFO - Dog reminder loop started!
+2025-09-18 13:43:35,102 - dog_reminder - DEBUG - Current time check: 2025-09-18 13:43:35 (Europe/Paris)
+2025-09-18 13:43:35,102 - dog_reminder - DEBUG - Morning time: 8:0
+2025-09-18 13:43:35,102 - dog_reminder - DEBUG - Noon time: 13:0
+2025-09-18 13:43:35,102 - dog_reminder - DEBUG - Evening time: 20:0
+2025-09-18 13:44:35,125 - dog_reminder - DEBUG - Current time check: 2025-09-18 13:44:35 (Europe/Paris)
+2025-09-18 13:44:35,125 - dog_reminder - DEBUG - Morning time: 8:0
+2025-09-18 13:44:35,125 - dog_reminder - DEBUG - Noon time: 13:0
+2025-09-18 13:44:35,125 - dog_reminder - DEBUG - Evening time: 20:0
+2025-09-18 13:46:31,737 - dog_reminder - INFO - DogReminder initialized
+2025-09-18 13:47:31,910 - dog_reminder - INFO - DogReminder initialized
+2025-09-18 13:47:34,953 - dog_reminder - INFO - Dog reminder started from on_ready event
+2025-09-18 13:47:34,953 - dog_reminder - INFO - Dog reminder loop started!
+2025-09-18 13:47:34,953 - dog_reminder - DEBUG - Current time check: 2025-09-18 13:47:34 (Europe/Paris)
+2025-09-18 13:47:34,953 - dog_reminder - DEBUG - Morning time: 8:0
+2025-09-18 13:47:34,953 - dog_reminder - DEBUG - Noon time: 13:0
+2025-09-18 13:47:34,953 - dog_reminder - DEBUG - Evening time: 20:0
+2025-09-18 13:47:43,213 - dog_reminder - INFO - Displayed dog reminder status
+2025-09-18 13:48:34,976 - dog_reminder - DEBUG - Current time check: 2025-09-18 13:48:34 (Europe/Paris)
+2025-09-18 13:48:34,976 - dog_reminder - DEBUG - Morning time: 8:0
+2025-09-18 13:48:34,976 - dog_reminder - DEBUG - Noon time: 13:0
+2025-09-18 13:48:34,976 - dog_reminder - DEBUG - Evening time: 20:0
+2025-09-18 13:49:35,018 - dog_reminder - DEBUG - Current time check: 2025-09-18 13:49:35 (Europe/Paris)
+2025-09-18 13:49:35,018 - dog_reminder - DEBUG - Morning time: 8:0
+2025-09-18 13:49:35,018 - dog_reminder - DEBUG - Noon time: 13:0
+2025-09-18 13:49:35,018 - dog_reminder - DEBUG - Evening time: 20:0
+2025-09-18 13:50:35,036 - dog_reminder - DEBUG - Current time check: 2025-09-18 13:50:35 (Europe/Paris)
+2025-09-18 13:50:35,036 - dog_reminder - DEBUG - Morning time: 8:0
+2025-09-18 13:50:35,036 - dog_reminder - DEBUG - Noon time: 13:0
+2025-09-18 13:50:35,036 - dog_reminder - DEBUG - Evening time: 20:0
+2025-09-18 13:51:07,891 - dog_reminder - INFO - Attempting to send morning dog reminder
+2025-09-18 13:51:08,133 - dog_reminder - DEBUG - Successfully fetched user moomaid (ID: 343513966049492999)
+2025-09-18 13:51:08,662 - dog_reminder - INFO - Successfully sent morning reminder message (ID: 1418202682782646293) to moomaid
+2025-09-18 13:51:08,662 - dog_reminder - DEBUG - Created reminder with ID: morning_20250918
+2025-09-18 13:51:08,662 - dog_reminder - DEBUG - Started timeout check task for reminder morning_20250918
+2025-09-18 13:51:08,662 - dog_reminder - DEBUG - Starting timeout check for reminder morning_20250918, will wait 3600 seconds
+2025-09-18 13:51:33,556 - dog_reminder - INFO - User indicated dog not taken care of via 'No' button (user: moomaid)
+2025-09-18 13:51:35,038 - dog_reminder - DEBUG - Current time check: 2025-09-18 13:51:35 (Europe/Paris)
+2025-09-18 13:51:35,038 - dog_reminder - DEBUG - Morning time: 8:0
+2025-09-18 13:51:35,038 - dog_reminder - DEBUG - Noon time: 13:0
+2025-09-18 13:51:35,038 - dog_reminder - DEBUG - Evening time: 20:0
+2025-09-18 13:51:35,473 - dog_reminder - INFO - Successfully notified owner about unattended morning dog session
+2025-09-18 13:51:35,473 - dog_reminder - DEBUG - Removed reminder morning_20250918 after 'No' response
+2025-09-18 13:51:35,697 - dog_reminder - DEBUG - Successfully disabled buttons after 'No' response
+2025-09-18 13:52:35,042 - dog_reminder - DEBUG - Current time check: 2025-09-18 13:52:35 (Europe/Paris)
+2025-09-18 13:52:35,042 - dog_reminder - DEBUG - Morning time: 8:0
+2025-09-18 13:52:35,042 - dog_reminder - DEBUG - Noon time: 13:0
+2025-09-18 13:52:35,042 - dog_reminder - DEBUG - Evening time: 20:0

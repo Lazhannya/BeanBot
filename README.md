@@ -9,9 +9,9 @@ BeanBot is a personal-use Discord bot created for fun and learning purposes. Thi
 ## 🤖 Features
 
 Current features (always growing!):
-- Custom responses to "What am I?" messages with personalized replies for specific users
-- Discord.py command integration
-- Detailed logging for debugging and learning
+- Tells people what they are
+- Tells dad jokes when unwanted phrases are said
+- Reminds my girlfriend to walk the dog three times a day
 
 ## 🛠️ Installation
 
