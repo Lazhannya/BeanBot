@@ -4,6 +4,9 @@ discord.py>=2.6.3
 # Environment variable management
 python-dotenv>=1.1.1
 
+# HTTP client for API requests
+aiohttp>=3.8.5
+
 # These are common dependencies that might be needed on a server
 # You can add or remove based on your specific needs
 setuptools>=68.0.0
