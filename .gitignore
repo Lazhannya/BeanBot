@@ -9,3 +9,7 @@ discord.log
 pyvenv.cfg
 pyproject.toml
 activate.sh
+debug_messages.log
+error_log.txt
+__pycache__
+test_bot.py

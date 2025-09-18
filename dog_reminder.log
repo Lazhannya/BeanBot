@@ -48,3 +48,7 @@
 2025-09-18 13:52:35,042 - dog_reminder - DEBUG - Morning time: 8:0
 2025-09-18 13:52:35,042 - dog_reminder - DEBUG - Noon time: 13:0
 2025-09-18 13:52:35,042 - dog_reminder - DEBUG - Evening time: 20:0
+2025-09-18 13:53:35,075 - dog_reminder - DEBUG - Current time check: 2025-09-18 13:53:35 (Europe/Paris)
+2025-09-18 13:53:35,075 - dog_reminder - DEBUG - Morning time: 8:0
+2025-09-18 13:53:35,075 - dog_reminder - DEBUG - Noon time: 13:0
+2025-09-18 13:53:35,075 - dog_reminder - DEBUG - Evening time: 20:0
