@@ -247,7 +247,17 @@ def setup(bot):
         dog_reminder.timeout = minutes * 60  # Convert minutes to seconds
         await ctx.send(f"Reminder timeout set to {minutes} minutes.")
     
-    # Start the dog reminder task
-    dog_reminder.start()
+    # We'll start the task in on_ready event instead of here
+    # Register an on_ready event to start the reminder task
+    @bot.event
+    async def on_ready_dog_reminder():
+        # Wait until the bot is ready
+        await bot.wait_until_ready()
+        # Start the dog reminder task
+        dog_reminder.start()
+        print("Dog reminder task started")
+    
+    # Queue the on_ready event to be run after bot is ready
+    bot.loop.create_task(on_ready_dog_reminder())
     
     return dog_reminder
