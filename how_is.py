@@ -88,31 +88,3 @@ def setup(bot):
             await ctx.send(f"Dad joke sent successfully! 😄")
         else:
             await ctx.send(f"Failed to send dad joke. Check logs for details.")
-    
-    # Set up a message listener instead of a command
-    @bot.event
-    async def on_message(message):
-        # Don't respond to bot messages (prevents potential loops)
-        if message.author.bot:
-            return
-        
-        # Process commands if this is a command message
-        await bot.process_commands(message)
-        
-        # Check if the message contains any of the target phrases
-        msg_content = message.content.lower()
-        target_phrases = ["how are you", "how is", "hows it going", "how's it going"]
-        
-        if any(phrase in msg_content for phrase in target_phrases):
-            # Try to get a joke from the API first
-            joke = await how_is_joke.get_joke_from_api()
-            
-            # If API fails, use our backup list
-            if not joke:
-                joke = random.choice(how_is_joke.dad_jokes)
-            
-            # Send the response with the preface
-            response = "We don't ask those questions here. Here's a dad joke instead:\n\n" + joke
-            await message.channel.send(response)
-    
-    return how_is_joke

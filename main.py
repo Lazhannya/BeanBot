@@ -4,18 +4,12 @@ import logging
 import os
 import datetime
 import sys
+import random
 from dotenv import load_dotenv
 
 # Local modules
 import dog_reminder
 import how_is
-
-# Set up more verbose logging
-logging.basicConfig(level=logging.DEBUG, 
-                   format='[%(asctime)s] [%(levelname)-8s] %(name)-15s: %(message)s',
-                   handlers=[
-                       logging.StreamHandler(stream=sys.stdout)
-                   ])
 
 # Load environment variables from .env file
 load_dotenv()
@@ -54,11 +48,13 @@ async def on_ready():
 @bot.event
 async def on_message(message):
     print(f'RECEIVED MESSAGE: {message.author} in #{message.channel}: "{message.content}"')
-    logging.info(f'RECEIVED MESSAGE: {message.author} in #{message.channel}: "{message.content}"')
     
     if message.author == bot.user:
         print("Message is from the bot itself, ignoring")
         return
+
+    msg_content = message.content.lower()
+    how_are_phrases = ["how are you", "how is", "hows it going", "how's it going", "how are"]
 
     # Log some information about the message context
     print(f"Message is in guild: {message.guild}, channel: {message.channel}")
@@ -67,7 +63,7 @@ async def on_message(message):
 
     # Check if specific phrases are contained anywhere in the message
     
-    if "what am i" in message.content.lower():
+    if "what am i" in msg_content:
         if message.author.id == 143474592529252353:
             await message.channel.send(f'You are the dumbest of all nerds, {message.author.mention}!')
         elif message.author.id == 343513966049492999:
@@ -79,11 +75,25 @@ async def on_message(message):
         else:
             await message.channel.send(f'You are a bottom, {message.author.mention}!')
     
-    if "love you" in message.content.lower():
+    if "love you" in msg_content:
         await message.channel.send(f'I love you too, {message.author.mention}! <3')
 
-    if "fuck you" in message.content.lower() or "i hate you" in message.content.lower():
+    if "fuck you" in msg_content or "i hate you" in msg_content:
         await message.channel.send(f'Fuck you too, {message.author.mention}!')
+
+ # Check if the message contains any of the target phrases
+        
+    if any(phrase in msg_content for phrase in how_are_phrases):
+        # Try to get a joke from the API first
+        joke = await how_is_joke.get_joke_from_api()
+        
+        # If API fails, use our backup list
+        if not joke:
+            joke = random.choice(how_is_joke.dad_jokes)
+        
+        # Send the response with the preface
+        response = "We don't ask those questions here. Here's a dad joke instead:\n\n" + joke
+        await message.channel.send(response)
 
     # This is needed to process commands
     await bot.process_commands(message)
@@ -95,6 +105,10 @@ token = os.getenv('DISCORD_TOKEN')
 # Initialize modules
 dog_reminder_instance = dog_reminder.setup(bot)
 how_is_instance = how_is.setup(bot)
+
+# Create an instance of HowIsJoke for use in message handler
+from how_is import HowIsJoke
+how_is_joke = HowIsJoke(bot)
 
 # Add some simple commands to test responsiveness
 @bot.command(name="ping")
