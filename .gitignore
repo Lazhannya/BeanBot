@@ -1,16 +1,47 @@
-.gitignore
 .env
-bin
-beanbot.egg-info
-include
-lib
-lib64
-discord.log
+.env.local
+.env.*.local
+bin/
+beanbot.egg-info/
+include/
+lib/
+lib64/
+*.log
 pyvenv.cfg
-pyproject.toml
 activate.sh
-debug_messages.log
-error_log.txt
-__pycache__
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
 test_bot.py
-dog_reminder.log
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Distribution
+dist/
+build/
+*.egg-info/
+*.egg
+*.whl
+*.tar.gz
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Type checking
+.mypy_cache/

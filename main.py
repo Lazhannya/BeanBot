@@ -8,8 +8,7 @@ import random
 from dotenv import load_dotenv
 
 # Local modules
-import dog_reminder
-import how_is
+from modules import reminder_system, how_is
 
 # Load environment variables from .env file
 load_dotenv()
@@ -101,8 +100,6 @@ async def on_message(message):
         await message.channel.send('What\'s right?')
     if "wrong" in msg_content:
         await message.channel.send('What\'s wrong?')
-    if "up" in msg_content:
-        await message.channel.send('Whattap')
     if "down" in msg_content:
         await message.channel.send('I\'m down')
 
@@ -143,7 +140,22 @@ async def on_message(message):
             "i hope chaos doesn't think my shirt is weird his opinion means a lot to me.", 
             "chaos downloaded a bunch of dolphin porn onto my computer, that's how come its on there.", 
         ]
-        await message.channel.send(random.choice(to_kill_chaos))
+        
+        # Try to avoid selecting the same message as last time
+        if not hasattr(bot, 'last_chaos_message'):
+            bot.last_chaos_message = None
+            
+        if bot.last_chaos_message and len(to_kill_chaos) > 1:
+            # Create a new list without the last message
+            filtered_options = [msg for msg in to_kill_chaos if msg != bot.last_chaos_message]
+            chosen_message = random.choice(filtered_options)
+        else:
+            chosen_message = random.choice(to_kill_chaos)
+            
+        # Remember this choice for next time
+        bot.last_chaos_message = chosen_message
+        
+        await message.channel.send(chosen_message)
 
  # Check if the message contains any of the target phrases
         
@@ -167,11 +179,11 @@ async def on_message(message):
 token = os.getenv('DISCORD_TOKEN')
 
 # Initialize modules
-dog_reminder_instance = dog_reminder.setup(bot)
+reminder_system_instance = reminder_system.setup(bot)
 how_is_instance = how_is.setup(bot)
 
 # Create an instance of HowIsJoke for use in message handler
-from how_is import HowIsJoke
+from modules.how_is import HowIsJoke
 how_is_joke = HowIsJoke(bot)
 
 # Add some simple commands to test responsiveness
