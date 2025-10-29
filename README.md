@@ -26,19 +26,66 @@ The reminder system sends scheduled notifications to specific users and tracks r
 - ✅ Multiple independent reminders supported
 - ✅ Dynamic reload without bot restart
 
-**Available Commands** (owner only):
-- `!testreminder <name> [schedule]` - Test a reminder immediately
-- `!reminderstatus` - View all configured and pending reminders
-- `!listreminders` - List all configured reminders with schedules
-- `!reloadreminders` - Reload configuration after editing `reminder_config.py`
-- `!dogtimezone [timezone]` - View or set timezone (e.g., "America/New_York")
-- `!settimeout <minutes>` - Set timeout duration for reminders
+**🚀 Slash Commands** (Modern Interface - Recommended):
 
-**Backward Compatible Commands:**
-- `!dogstatus` - View dog reminder status
-- `!testreminderdog [morning|noon|evening]` - Test dog reminder
-- `!setdogreminder [user_id]` - View/set dog reminder recipient
-- `!setdogowner [user_id]` - View/set escalation user
+**General Reminder Commands:**
+- `/reminder test` - Test a reminder delivery with autocomplete
+- `/reminder status` - Check reminder system status
+- `/reminder list` - List all configured reminders
+- `/reminder reload` - Reload reminder configuration (owner only)
+- `/reminder timeout` - Set timeout for a reminder (owner only)
+- `/reminder help` - Show help for reminder commands
+
+**Dog-Specific Commands:**
+- `/dog test` - Test dog reminder at specific time with autocomplete
+- `/dog status` - Check dog reminder status
+- `/dog timezone` - View or set timezone with autocomplete suggestions
+- `/dog set-reminder` - Set dog reminder user (owner only)
+- `/dog set-owner` - Set dog owner/escalation user (owner only)
+- `/dog set-time` - Set reminder times for morning/noon/evening (owner only)
+- `/dog help` - Show help for dog commands
+
+**🎯 Autocomplete Features:**
+- **Reminder Names**: Type to see all available reminders
+- **Schedule Labels**: See schedule options for selected reminder
+- **Timezones**: Common timezone suggestions (America/New_York, Europe/London, etc.)
+- **Dog Schedule Types**: Morning, noon, evening options
+- **User Selection**: Pick users from server member list
+
+**📱 Migration Guide (Legacy → Slash Commands):**
+- `!testreminder` → `/reminder test`
+- `!reminderstatus` → `/reminder status`
+- `!listreminders` → `/reminder list`
+- `!reloadreminders` → `/reminder reload`
+- `!settimeout` → `/reminder timeout`
+- `!dogstatus` → `/dog status`
+- `!testreminderdog` → `/dog test`
+- `!dogtimezone` → `/dog timezone`
+- `!setdogreminder` → `/dog set-reminder`
+- `!setdogowner` → `/dog set-owner`
+- `!setremindertime` → `/dog set-time`
+
+**Legacy Commands** (Still supported for backward compatibility):
+All `!` commands continue to work but slash commands provide better UX with autocomplete
+
+**💡 Using Slash Commands:**
+
+Slash commands provide a modern Discord interface with autocomplete:
+
+1. **Start typing**: Type `/reminder` or `/dog` and Discord shows available commands
+2. **Autocomplete magic**: Start typing parameters and see suggestions:
+   - Reminder names are filtered as you type
+   - Schedules update based on selected reminder
+   - Timezone suggestions appear for common zones
+3. **Guided input**: Discord shows required/optional parameters
+4. **Ephemeral help**: Help commands are private (only you see them)
+
+**Example Usage:**
+```
+/reminder test <tab>  # Shows all reminder names
+/reminder test dog_walking <tab>  # Shows morning, noon, evening
+/dog timezone <tab>  # Shows America/New_York, Europe/London, etc.
+```
 
 **How It Works:**
 1. Bot sends reminder at scheduled time with Yes/No buttons
@@ -71,13 +118,14 @@ REMINDERS.append({
 
 Then reload the bot configuration:
 ```
-!reloadreminders
+/reminder reload
 ```
 
-Test your new reminder:
+Test your new reminder (with autocomplete):
 ```
-!testreminder medication morning_dose
+/reminder test
 ```
+Select "medication" from the autocomplete list, then "morning_dose" from the schedule list.
 
 **Bot Restart Behavior:**
 - Pending reminders are cleared on restart (in-memory only)

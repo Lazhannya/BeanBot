@@ -6,6 +6,7 @@ denial, and timeout escalation features.
 
 import discord
 from discord.ext import commands, tasks
+from discord import app_commands
 import datetime
 import asyncio
 import logging
@@ -341,6 +342,157 @@ class ReminderSystem:
             except Exception as e:
                 logger.error(f"Unexpected error in no_button: {e}", exc_info=True)
 
+# === VALIDATION FUNCTIONS ===
+
+def validate_reminder_and_schedule(reminder_name: str, schedule_label: str = None) -> tuple[bool, str, dict, dict]:
+    """
+    Enhanced validation for reminder and schedule combinations
+    Returns: (is_valid, error_message, reminder_obj, schedule_obj)
+    """
+    try:
+        # Find reminder
+        reminder = next((r for r in reminder_config.REMINDERS if r['name'] == reminder_name), None)
+        if not reminder:
+            available = ", ".join([r['name'] for r in reminder_config.REMINDERS])
+            return False, f"Reminder '{reminder_name}' not found. Available: {available}", None, None
+        
+        # If no schedule specified, use first one
+        if schedule_label is None:
+            if not reminder.get('schedules'):
+                return False, f"Reminder '{reminder_name}' has no schedules configured.", reminder, None
+            schedule = reminder['schedules'][0]
+            return True, "", reminder, schedule
+        
+        # Find specific schedule
+        schedule = next((s for s in reminder.get('schedules', []) if s['label'] == schedule_label), None)
+        if not schedule:
+            available = ", ".join([s['label'] for s in reminder.get('schedules', [])])
+            return False, f"Schedule '{schedule_label}' not found for '{reminder_name}'. Available: {available}", reminder, None
+        
+        return True, "", reminder, schedule
+        
+    except Exception as e:
+        logger.error(f"Error in validate_reminder_and_schedule: {e}")
+        return False, f"Validation error: {str(e)}", None, None
+
+# === AUTOCOMPLETE FUNCTIONS ===
+
+async def reminder_name_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
+    """Enhanced autocomplete function for reminder names with validation"""
+    try:
+        # Enhanced error handling for config unavailable
+        if not hasattr(reminder_config, 'REMINDERS') or not reminder_config.REMINDERS:
+            logger.warning("REMINDERS configuration not available for autocomplete")
+            return [app_commands.Choice(name="No reminders configured", value="none")]
+        
+        choices = []
+        for reminder in reminder_config.REMINDERS:
+            reminder_name = reminder.get('name', 'unknown')
+            if current.lower() in reminder_name.lower():
+                # Enhanced: Show additional context in autocomplete
+                schedule_count = len(reminder.get('schedules', []))
+                display_name = f"{reminder_name} ({schedule_count} schedules)"
+                choices.append(app_commands.Choice(name=display_name, value=reminder_name))
+        
+        # Enhanced: If no matches found, provide helpful message
+        if not choices and current.strip():
+            choices.append(app_commands.Choice(name=f"No reminders match '{current}'", value="none"))
+        
+        # Limit to Discord's maximum of 25 choices
+        return choices[:25]
+    except Exception as e:
+        logger.error(f"Error in reminder_name_autocomplete: {e}")
+        return [app_commands.Choice(name="Error loading reminders", value="error")]
+
+async def schedule_label_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
+    """Enhanced autocomplete function for schedule labels based on selected reminder"""
+    try:
+        choices = []
+        
+        # Try to get the reminder name from the interaction (enhanced context awareness)
+        reminder_name = None
+        if hasattr(interaction, 'namespace') and interaction.namespace:
+            reminder_name = getattr(interaction.namespace, 'reminder', None)
+        
+        # Enhanced: Also try to get from command data if namespace isn't available
+        if not reminder_name and hasattr(interaction, 'data') and interaction.data:
+            options = interaction.data.get('options', [])
+            for option in options:
+                if option.get('name') == 'reminder':
+                    reminder_name = option.get('value')
+                    break
+        
+        if reminder_name:
+            # Find the specific reminder (dynamic filtering)
+            reminder = next((r for r in reminder_config.REMINDERS if r['name'] == reminder_name), None)
+            if reminder:
+                for schedule in reminder['schedules']:
+                    label = schedule['label']
+                    if current.lower() in label.lower():
+                        # Enhanced: Include time in display name for clarity
+                        display_name = f"{label} ({schedule['hour']:02d}:{schedule['minute']:02d})"
+                        choices.append(app_commands.Choice(name=display_name, value=label))
+        else:
+            # If no reminder selected, show all possible schedule labels with context
+            seen_labels = set()
+            for reminder in reminder_config.REMINDERS:
+                for schedule in reminder['schedules']:
+                    label = schedule['label']
+                    if current.lower() in label.lower() and label not in seen_labels:
+                        # Enhanced: Show which reminder this label belongs to
+                        display_name = f"{label} (from {reminder['name']})"
+                        choices.append(app_commands.Choice(name=display_name, value=label))
+                        seen_labels.add(label)
+        
+        return choices[:25]
+    except Exception as e:
+        logger.error(f"Error in schedule_label_autocomplete: {e}")
+        return []
+
+async def timezone_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
+    """Enhanced autocomplete function for timezone names with popular suggestions first"""
+    try:
+        # Enhanced: More comprehensive timezone list with regions
+        popular_timezones = [
+            'UTC', 'Europe/London', 'Europe/Paris', 'Europe/Berlin', 'Europe/Rome', 'Europe/Madrid',
+            'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles',
+            'Asia/Tokyo', 'Asia/Shanghai', 'Asia/Kolkata', 'Asia/Dubai', 'Asia/Seoul',
+            'Australia/Sydney', 'Australia/Melbourne', 'Pacific/Auckland'
+        ]
+        
+        choices = []
+        
+        # Enhanced: Prioritize exact matches first
+        exact_matches = []
+        partial_matches = []
+        
+        for tz in popular_timezones:
+            if current.lower() == tz.lower():
+                exact_matches.append(app_commands.Choice(name=f"⭐ {tz}", value=tz))
+            elif current.lower() in tz.lower():
+                partial_matches.append(app_commands.Choice(name=tz, value=tz))
+        
+        # Enhanced: Show current timezone if available
+        try:
+            current_tz = str(reminder_config.TIMEZONE)
+            if current.lower() in current_tz.lower() and current_tz not in [choice.value for choice in exact_matches + partial_matches]:
+                choices.append(app_commands.Choice(name=f"🌍 {current_tz} (current)", value=current_tz))
+        except:
+            pass
+        
+        # Combine results: exact matches first, then partial matches
+        choices.extend(exact_matches)
+        choices.extend(partial_matches)
+        
+        # Enhanced: If no matches, show a helpful message
+        if not choices and current.strip():
+            choices.append(app_commands.Choice(name=f"No timezone matches '{current}'", value="UTC"))
+        
+        return choices[:25]
+    except Exception as e:
+        logger.error(f"Error in timezone_autocomplete: {e}")
+        return [app_commands.Choice(name="UTC (fallback)", value="UTC")]
+
 def setup(bot):
     """Create and register the reminder system"""
     reminder_system = ReminderSystem(bot)
@@ -613,5 +765,524 @@ def setup(bot):
         
         await ctx.send(message)
         logger.info("Displayed configured reminders list")
+    
+    # === SLASH COMMAND GROUPS ===
+    
+    class ReminderGroup(app_commands.Group):
+        """Reminder management slash commands"""
+        
+        def __init__(self, reminder_system):
+            super().__init__(name="reminder", description="Reminder management commands")
+            self.reminder_system = reminder_system
+        
+        @app_commands.command(name="test", description="Test a reminder delivery")
+        @app_commands.describe(
+            reminder="Name of the reminder to test",
+            schedule="Schedule label to test (optional)"
+        )
+        async def test(self, interaction: discord.Interaction, reminder: str, schedule: str = None):
+            """Test reminder delivery - slash command version of !testreminder"""
+            try:
+                # Defer response since this might take time
+                await interaction.response.defer()
+                
+                # Find the reminder
+                reminder_config_obj = next((r for r in self.reminder_system.reminders if r['name'] == reminder), None)
+                if not reminder_config_obj:
+                    await interaction.followup.send(f"❌ Reminder '{reminder}' not found in configuration.")
+                    return
+                
+                # If no schedule label specified, use the first one
+                if schedule is None:
+                    if len(reminder_config_obj['schedules']) == 0:
+                        await interaction.followup.send(f"❌ Reminder '{reminder}' has no schedules configured.")
+                        return
+                    schedule_obj = reminder_config_obj['schedules'][0]
+                    schedule = schedule_obj['label']
+                else:
+                    # Find the schedule
+                    schedule_obj = next((s for s in reminder_config_obj['schedules'] if s['label'] == schedule), None)
+                    if not schedule_obj:
+                        available = ", ".join([s['label'] for s in reminder_config_obj['schedules']])
+                        await interaction.followup.send(f"❌ Schedule '{schedule}' not found for reminder '{reminder}'.\nAvailable schedules: {available}")
+                        return
+                
+                # Send the reminder
+                await self.reminder_system.send_reminder(reminder_config_obj, schedule_obj)
+                await interaction.followup.send(f"✅ Test reminder sent: **{reminder}** - *{schedule}*!")
+                logger.info(f"SLASH_COMMAND: /reminder test executed by {interaction.user} ({interaction.user.id}) - reminder: {reminder}, schedule: {schedule}")
+                
+            except Exception as e:
+                logger.error(f"Error in /reminder test: {e}", exc_info=True)
+                await interaction.followup.send(f"❌ Error testing reminder: {str(e)}")
+        
+        @test.autocomplete('reminder')
+        async def test_reminder_autocomplete(self, interaction: discord.Interaction, current: str):
+            return await reminder_name_autocomplete(interaction, current)
+        
+        @test.autocomplete('schedule')
+        async def test_schedule_autocomplete(self, interaction: discord.Interaction, current: str):
+            return await schedule_label_autocomplete(interaction, current)
+        
+        @app_commands.command(name="status", description="Check reminder system status")
+        async def status(self, interaction: discord.Interaction):
+            """Show reminder system status - slash command version of !reminderstatus"""
+            try:
+                current_time = datetime.datetime.now(self.reminder_system.timezone)
+                pending_count = len(self.reminder_system.pending_reminders)
+                
+                status_message = (
+                    f"📋 **Reminder System Status**\n"
+                    f"🕐 Current time: {current_time.strftime('%Y-%m-%d %H:%M:%S %Z')}\n"
+                    f"⏰ Pending reminders: {pending_count}\n"
+                    f"📍 Timezone: {self.reminder_system.timezone}\n"
+                    f"🔧 Active reminders: {len(self.reminder_system.reminders)}\n\n"
+                )
+                
+                if pending_count > 0:
+                    status_message += "**Pending Reminders:**\n"
+                    for reminder_id, reminder_info in self.reminder_system.pending_reminders.items():
+                        reminder_name = reminder_info.get('reminder_name', 'unknown')
+                        timestamp = reminder_info.get('timestamp')
+                        if timestamp:
+                            time_since = (current_time - timestamp).total_seconds() / 60
+                            schedule_label = reminder_info.get('schedule_label', 'unknown')
+                            status_message += f"• {reminder_name} - {schedule_label} ({int(time_since)} minutes ago)\n"
+                
+                await interaction.response.send_message(status_message)
+                logger.info(f"SLASH_COMMAND: /reminder status executed by {interaction.user} ({interaction.user.id})")
+                
+            except Exception as e:
+                logger.error(f"Error in /reminder status: {e}", exc_info=True)
+                await interaction.response.send_message(f"❌ Error getting status: {str(e)}")
+        
+        @app_commands.command(name="list", description="List all configured reminders")
+        async def list_reminders(self, interaction: discord.Interaction):
+            """List all configured reminders - slash command version of !listreminders"""
+            try:
+                if len(self.reminder_system.reminders) == 0:
+                    await interaction.response.send_message("📋 No reminders configured.")
+                    return
+                
+                message = f"📋 **Configured Reminders** ({len(self.reminder_system.reminders)} total):\n\n"
+                
+                for reminder in self.reminder_system.reminders:
+                    message += f"**{reminder['name']}**\n"
+                    message += f"  📅 Schedules:\n"
+                    for schedule in reminder['schedules']:
+                        message += f"    • {schedule['label']}: {schedule['hour']:02d}:{schedule['minute']:02d}\n"
+                    message += f"  👤 Target: <@{reminder['target_user_id']}>\n"
+                    message += f"  🚨 Escalation: <@{reminder['escalation_user_id']}>\n"
+                    message += f"  ⏱️ Timeout: {reminder['timeout_minutes']} minutes\n\n"
+                
+                await interaction.response.send_message(message)
+                logger.info(f"SLASH_COMMAND: /reminder list executed by {interaction.user} ({interaction.user.id})")
+                
+            except Exception as e:
+                logger.error(f"Error in /reminder list: {e}", exc_info=True)
+                await interaction.response.send_message(f"❌ Error listing reminders: {str(e)}")
+        
+        @app_commands.command(name="reload", description="Reload reminder configuration")
+        async def reload(self, interaction: discord.Interaction):
+            """Reload reminder configuration - slash command version of !reloadreminders"""
+            try:
+                # Check if user is bot owner
+                if interaction.user.id != interaction.client.owner_id:
+                    await interaction.response.send_message("❌ Only the bot owner can use this command.", ephemeral=True)
+                    return
+                
+                success, message = self.reminder_system.reload_config()
+                await interaction.response.send_message(message)
+                logger.info(f"SLASH_COMMAND: /reminder reload executed by {interaction.user} ({interaction.user.id})")
+                
+            except Exception as e:
+                logger.error(f"Error in /reminder reload: {e}", exc_info=True)
+                await interaction.response.send_message(f"❌ Error reloading configuration: {str(e)}")
+        
+        @app_commands.command(name="timeout", description="Set timeout for a reminder")
+        @app_commands.describe(
+            reminder="Name of the reminder to modify",
+            minutes="Timeout in minutes (must be at least 1)"
+        )
+        async def timeout(self, interaction: discord.Interaction, reminder: str, minutes: int):
+            """Set reminder timeout - slash command version of !settimeout"""
+            try:
+                # Check if user is bot owner
+                if interaction.user.id != interaction.client.owner_id:
+                    await interaction.response.send_message("❌ Only the bot owner can use this command.", ephemeral=True)
+                    return
+                
+                # Validate minutes
+                if minutes < 1:
+                    await interaction.response.send_message("❌ Timeout must be at least 1 minute.")
+                    return
+                
+                # Find the reminder
+                reminder_obj = next((r for r in self.reminder_system.reminders if r['name'] == reminder), None)
+                if not reminder_obj:
+                    await interaction.response.send_message(f"❌ Reminder '{reminder}' not found in configuration.")
+                    return
+                
+                # Update timeout (in memory only)
+                reminder_obj['timeout_minutes'] = minutes
+                await interaction.response.send_message(
+                    f"✅ Timeout for **{reminder}** set to {minutes} minutes.\n"
+                    f"⚠️ *Note: This change is in-memory only. Edit `reminder_config.py` to persist changes.*"
+                )
+                logger.info(f"SLASH_COMMAND: /reminder timeout executed by {interaction.user} ({interaction.user.id}) - reminder: {reminder}, timeout: {minutes} minutes")
+                
+            except Exception as e:
+                logger.error(f"Error in /reminder timeout: {e}", exc_info=True)
+                await interaction.response.send_message(f"❌ Error setting timeout: {str(e)}")
+        
+        @timeout.autocomplete('reminder')
+        async def timeout_reminder_autocomplete(self, interaction: discord.Interaction, current: str):
+            return await reminder_name_autocomplete(interaction, current)
+        
+        @app_commands.command(name="help", description="Show help for reminder commands")
+        async def help(self, interaction: discord.Interaction):
+            """Show help for all reminder slash commands"""
+            try:
+                help_message = (
+                    "📋 **Reminder System Commands**\n\n"
+                    
+                    "**🧪 Testing & Status**\n"
+                    "`/reminder test` - Test a reminder delivery\n"
+                    "`/reminder status` - Check reminder system status\n"
+                    "`/reminder list` - List all configured reminders\n\n"
+                    
+                    "**⚙️ Configuration**\n"
+                    "`/reminder reload` - Reload reminder configuration\n"
+                    "`/reminder timeout` - Set timeout for a reminder\n\n"
+                    
+                    "**💡 Tips**\n"
+                    "• All commands support autocomplete - start typing to see suggestions\n"
+                    "• Use `/dog help` for dog-specific reminder commands\n"
+                    "• Configuration changes are in-memory only - edit `reminder_config.py` to persist\n\n"
+                    
+                    "**📚 Legacy Commands**\n"
+                    "Old `!` commands still work but slash commands are recommended for better UX"
+                )
+                
+                await interaction.response.send_message(help_message, ephemeral=True)
+                logger.info(f"SLASH_COMMAND: /reminder help executed by {interaction.user} ({interaction.user.id})")
+                
+            except Exception as e:
+                logger.error(f"Error in /reminder help: {e}", exc_info=True)
+                await interaction.response.send_message(f"❌ Error showing help: {str(e)}")
+        
+    
+    class DogGroup(app_commands.Group):
+        """Legacy dog reminder slash commands"""
+        
+        def __init__(self, reminder_system):
+            super().__init__(name="dog", description="Dog reminder commands (legacy compatibility)")
+            self.reminder_system = reminder_system
+        
+        @app_commands.command(name="test", description="Test dog reminder")
+        @app_commands.describe(time="Time of day (morning, noon, evening)")
+        async def test(self, interaction: discord.Interaction, time: str = "morning"):
+            """Test dog reminder - slash command version of !testreminderdog"""
+            try:
+                await interaction.response.defer()
+                
+                # Find dog_walking reminder
+                dog_reminder = next((r for r in self.reminder_system.reminders if r['name'] == 'dog_walking'), None)
+                if not dog_reminder:
+                    await interaction.followup.send("❌ Dog walking reminder not found in configuration.")
+                    return
+                
+                # Find the schedule
+                schedule = next((s for s in dog_reminder['schedules'] if s['label'] == time), None)
+                if not schedule:
+                    available = ", ".join([s['label'] for s in dog_reminder['schedules']])
+                    await interaction.followup.send(f"❌ Time '{time}' not found. Available times: {available}")
+                    return
+                
+                await self.reminder_system.send_reminder(dog_reminder, schedule)
+                await interaction.followup.send(f"✅ Test {time} dog reminder sent!")
+                logger.info(f"SLASH_COMMAND: /dog test executed by {interaction.user} ({interaction.user.id}) - time: {time}")
+                
+            except Exception as e:
+                logger.error(f"Error in /dog test: {e}", exc_info=True)
+                await interaction.followup.send(f"❌ Error testing dog reminder: {str(e)}")
+        
+        @test.autocomplete('time')
+        async def test_time_autocomplete(self, interaction: discord.Interaction, current: str):
+            try:
+                dog_reminder = next((r for r in reminder_config.REMINDERS if r['name'] == 'dog_walking'), None)
+                if not dog_reminder:
+                    return []
+                
+                choices = []
+                for schedule in dog_reminder['schedules']:
+                    label = schedule['label']
+                    if current.lower() in label.lower():
+                        choices.append(app_commands.Choice(name=label, value=label))
+                
+                return choices[:25]
+            except Exception as e:
+                logger.error(f"Error in dog test autocomplete: {e}")
+                return []
+        
+        @app_commands.command(name="status", description="Check dog reminder status")
+        async def status(self, interaction: discord.Interaction):
+            """Show dog reminder status - slash command version of !dogstatus"""
+            try:
+                dog_reminder = next((r for r in self.reminder_system.reminders if r['name'] == 'dog_walking'), None)
+                if not dog_reminder:
+                    await interaction.response.send_message("❌ Dog walking reminder not found in configuration.")
+                    return
+                
+                current_time = datetime.datetime.now(self.reminder_system.timezone)
+                status_message = f"🐕 **Dog Reminder Status**\n"
+                status_message += f"🕐 Current time: {current_time.strftime('%Y-%m-%d %H:%M:%S %Z')}\n"
+                status_message += f"📍 Timezone: {self.reminder_system.timezone}\n\n"
+                
+                status_message += f"📅 **Scheduled Times:**\n"
+                for schedule in dog_reminder['schedules']:
+                    status_message += f"• {schedule['label']}: {schedule['hour']:02d}:{schedule['minute']:02d}\n"
+                
+                status_message += f"\n👤 Target user: <@{dog_reminder['target_user_id']}>\n"
+                status_message += f"🚨 Escalation user: <@{dog_reminder['escalation_user_id']}>\n"
+                status_message += f"⏱️ Timeout: {dog_reminder['timeout_minutes']} minutes\n"
+                
+                # Check for pending dog reminders
+                dog_pending = {k: v for k, v in self.reminder_system.pending_reminders.items() 
+                              if v.get('reminder_name') == 'dog_walking'}
+                if dog_pending:
+                    status_message += f"\n⏰ **Pending:** {len(dog_pending)} reminder(s)\n"
+                    for reminder_id, reminder_info in dog_pending.items():
+                        timestamp = reminder_info.get('timestamp')
+                        if timestamp:
+                            time_since = (current_time - timestamp).total_seconds() / 60
+                            schedule_label = reminder_info.get('schedule_label', 'unknown')
+                            status_message += f"• {schedule_label} ({int(time_since)} minutes ago)\n"
+                
+                await interaction.response.send_message(status_message)
+                logger.info(f"SLASH_COMMAND: /dog status executed by {interaction.user} ({interaction.user.id})")
+                
+            except Exception as e:
+                logger.error(f"Error in /dog status: {e}", exc_info=True)
+                await interaction.response.send_message(f"❌ Error getting dog status: {str(e)}")
+        
+        @app_commands.command(name="timezone", description="View or set timezone")
+        @app_commands.describe(zone="Timezone name (e.g., Europe/Paris, America/New_York)")
+        async def timezone(self, interaction: discord.Interaction, zone: str = None):
+            """View or set timezone - slash command version of !dogtimezone"""
+            try:
+                if zone is None:
+                    # Just show current timezone
+                    await interaction.response.send_message(f"🌍 Current timezone: **{self.reminder_system.timezone}**")
+                    return
+                
+                # Check if user is bot owner for setting timezone
+                if interaction.user.id != interaction.client.owner_id:
+                    await interaction.response.send_message("❌ Only the bot owner can change the timezone.", ephemeral=True)
+                    return
+                
+                # Try to set the timezone
+                try:
+                    new_timezone = pytz.timezone(zone)
+                    self.reminder_system.timezone = new_timezone
+                    
+                    # Update in config (in memory only)
+                    reminder_config.TIMEZONE = zone
+                    
+                    await interaction.response.send_message(
+                        f"✅ Timezone set to: **{new_timezone}**\n"
+                        f"⚠️ *Note: This change is in-memory only. Edit `reminder_config.py` to persist changes.*"
+                    )
+                    logger.info(f"SLASH_COMMAND: /dog timezone executed by {interaction.user} ({interaction.user.id}) - zone: {zone}")
+                    
+                except pytz.exceptions.UnknownTimeZoneError:
+                    await interaction.response.send_message(f"❌ Unknown timezone: {zone}. Use a valid timezone like 'Europe/Paris' or 'America/New_York'.")
+                
+            except Exception as e:
+                logger.error(f"Error in /dog timezone: {e}", exc_info=True)
+                await interaction.response.send_message(f"❌ Error with timezone: {str(e)}")
+        
+        @timezone.autocomplete('zone')
+        async def timezone_zone_autocomplete(self, interaction: discord.Interaction, current: str):
+            return await timezone_autocomplete(interaction, current)
+        
+        @app_commands.command(name="set-reminder", description="Set dog reminder user")
+        @app_commands.describe(user="User who should receive dog reminders")
+        async def set_reminder(self, interaction: discord.Interaction, user: discord.Member):
+            """Set dog reminder user - slash command version of !setdogreminder"""
+            try:
+                # Check if user is bot owner
+                if interaction.user.id != interaction.client.owner_id:
+                    await interaction.response.send_message("❌ Only the bot owner can use this command.", ephemeral=True)
+                    return
+                
+                # Find dog_walking reminder
+                dog_reminder = next((r for r in self.reminder_system.reminders if r['name'] == 'dog_walking'), None)
+                if not dog_reminder:
+                    await interaction.response.send_message("❌ Dog walking reminder not found in configuration.")
+                    return
+                
+                # Update target user (in memory only)
+                dog_reminder['target_user_id'] = user.id
+                await interaction.response.send_message(
+                    f"✅ Dog reminder target set to: {user.mention}\n"
+                    f"⚠️ *Note: This change is in-memory only. Edit `reminder_config.py` to persist changes.*"
+                )
+                logger.info(f"SLASH_COMMAND: /dog set-reminder executed by {interaction.user} ({interaction.user.id}) - user: {user.id}")
+                
+            except Exception as e:
+                logger.error(f"Error in /dog set-reminder: {e}", exc_info=True)
+                await interaction.response.send_message(f"❌ Error setting reminder user: {str(e)}")
+        
+        @app_commands.command(name="set-owner", description="Set dog owner (escalation user)")
+        @app_commands.describe(user="User who should receive escalation notifications")
+        async def set_owner(self, interaction: discord.Interaction, user: discord.Member):
+            """Set dog owner - slash command version of !setdogowner"""
+            try:
+                # Check if user is bot owner
+                if interaction.user.id != interaction.client.owner_id:
+                    await interaction.response.send_message("❌ Only the bot owner can use this command.", ephemeral=True)
+                    return
+                
+                # Find dog_walking reminder
+                dog_reminder = next((r for r in self.reminder_system.reminders if r['name'] == 'dog_walking'), None)
+                if not dog_reminder:
+                    await interaction.response.send_message("❌ Dog walking reminder not found in configuration.")
+                    return
+                
+                # Update escalation user (in memory only)
+                dog_reminder['escalation_user_id'] = user.id
+                await interaction.response.send_message(
+                    f"✅ Dog owner (escalation user) set to: {user.mention}\n"
+                    f"⚠️ *Note: This change is in-memory only. Edit `reminder_config.py` to persist changes.*"
+                )
+                logger.info(f"SLASH_COMMAND: /dog set-owner executed by {interaction.user} ({interaction.user.id}) - user: {user.id}")
+                
+            except Exception as e:
+                logger.error(f"Error in /dog set-owner: {e}", exc_info=True)
+                await interaction.response.send_message(f"❌ Error setting owner: {str(e)}")
+        
+        @app_commands.command(name="set-time", description="Set reminder time")
+        @app_commands.describe(
+            type="Type of reminder time (morning, noon, evening)",
+            hour="Hour (0-23)",
+            minute="Minute (0-59, default: 0)"
+        )
+        async def set_time(self, interaction: discord.Interaction, type: str, hour: int, minute: int = 0):
+            """Set reminder time - slash command version of !setremindertime"""
+            try:
+                # Check if user is bot owner
+                if interaction.user.id != interaction.client.owner_id:
+                    await interaction.response.send_message("❌ Only the bot owner can use this command.", ephemeral=True)
+                    return
+                
+                # Validate hour and minute
+                if not (0 <= hour <= 23):
+                    await interaction.response.send_message("❌ Hour must be between 0 and 23.")
+                    return
+                if not (0 <= minute <= 59):
+                    await interaction.response.send_message("❌ Minute must be between 0 and 59.")
+                    return
+                
+                # Find dog_walking reminder
+                dog_reminder = next((r for r in self.reminder_system.reminders if r['name'] == 'dog_walking'), None)
+                if not dog_reminder:
+                    await interaction.response.send_message("❌ Dog walking reminder not found in configuration.")
+                    return
+                
+                # Find and update the schedule
+                schedule = next((s for s in dog_reminder['schedules'] if s['label'] == type), None)
+                if not schedule:
+                    available = ", ".join([s['label'] for s in dog_reminder['schedules']])
+                    await interaction.response.send_message(f"❌ Reminder type '{type}' not found. Available types: {available}")
+                    return
+                
+                # Update time (in memory only)
+                schedule['hour'] = hour
+                schedule['minute'] = minute
+                await interaction.response.send_message(
+                    f"✅ {type.capitalize()} dog reminder time set to: **{hour:02d}:{minute:02d}**\n"
+                    f"⚠️ *Note: This change is in-memory only. Edit `reminder_config.py` to persist changes.*"
+                )
+                logger.info(f"SLASH_COMMAND: /dog set-time executed by {interaction.user} ({interaction.user.id}) - type: {type}, time: {hour:02d}:{minute:02d}")
+                
+            except Exception as e:
+                logger.error(f"Error in /dog set-time: {e}", exc_info=True)
+                await interaction.response.send_message(f"❌ Error setting time: {str(e)}")
+        
+        @set_time.autocomplete('type')
+        async def set_time_type_autocomplete(self, interaction: discord.Interaction, current: str):
+            try:
+                dog_reminder = next((r for r in reminder_config.REMINDERS if r['name'] == 'dog_walking'), None)
+                if not dog_reminder:
+                    return []
+                
+                choices = []
+                for schedule in dog_reminder['schedules']:
+                    label = schedule['label']
+                    if current.lower() in label.lower():
+                        choices.append(app_commands.Choice(name=label, value=label))
+                
+                return choices[:25]
+            except Exception as e:
+                logger.error(f"Error in set-time type autocomplete: {e}")
+                return []
+        
+        @app_commands.command(name="help", description="Show help for dog commands")
+        async def help(self, interaction: discord.Interaction):
+            """Show help for all dog slash commands"""
+            try:
+                help_message = (
+                    "🐕 **Dog Reminder Commands**\n\n"
+                    
+                    "**🧪 Testing & Status**\n"
+                    "`/dog test` - Test dog reminder at specific time\n"
+                    "`/dog status` - Check dog reminder status\n"
+                    "`/dog timezone` - View or set timezone\n\n"
+                    
+                    "**⚙️ Configuration (Owner Only)**\n"
+                    "`/dog set-reminder` - Set user who receives dog reminders\n"
+                    "`/dog set-owner` - Set dog owner (escalation user)\n"
+                    "`/dog set-time` - Set reminder times (morning/noon/evening)\n\n"
+                    
+                    "**💡 Tips**\n"
+                    "• All commands support autocomplete - start typing to see suggestions\n"
+                    "• Use `/reminder help` for general reminder commands\n"
+                    "• Configuration commands require bot owner permissions\n"
+                    "• Configuration changes are in-memory only - edit `reminder_config.py` to persist\n\n"
+                    
+                    "**📚 Legacy Commands**\n"
+                    "Old `!` commands still work but slash commands are recommended for better UX"
+                )
+                
+                await interaction.response.send_message(help_message, ephemeral=True)
+                logger.info(f"SLASH_COMMAND: /dog help executed by {interaction.user} ({interaction.user.id})")
+                
+            except Exception as e:
+                logger.error(f"Error in /dog help: {e}", exc_info=True)
+                await interaction.response.send_message(f"❌ Error showing help: {str(e)}")
+        
+    
+    # Create command group instances
+    reminder_group = ReminderGroup(reminder_system)
+    dog_group = DogGroup(reminder_system)
+    
+    # Utility function to sync slash commands
+    def sync_slash_commands():
+        """Utility function to register slash commands with Discord"""
+        try:
+            bot.tree.add_command(reminder_group)
+            bot.tree.add_command(dog_group)
+            logger.info("Slash command groups added to command tree")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to add slash command groups: {e}")
+            return False
+    
+    # Register slash commands
+    if sync_slash_commands():
+        logger.info("Slash command groups registered successfully")
+    else:
+        logger.error("Failed to register slash command groups")
     
     return reminder_system

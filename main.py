@@ -1,5 +1,6 @@
 import discord
 from discord.ext import commands
+from discord import app_commands
 import logging
 import os
 import datetime
@@ -41,6 +42,15 @@ async def on_ready():
             print(f"       Can read messages: {perms.read_messages}")
             print(f"       Can send messages: {perms.send_messages}")
             print(f"       Can read history: {perms.read_message_history}")
+    
+    # Sync slash commands
+    try:
+        print("Syncing slash commands...")
+        synced = await bot.tree.sync()
+        print(f"Synced {len(synced)} slash command(s)")
+    except Exception as e:
+        print(f"Failed to sync slash commands: {e}")
+        
     print("Bot is ready and listening for messages!")
 
 # Funny message reactions
