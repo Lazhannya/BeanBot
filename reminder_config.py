@@ -56,6 +56,22 @@ REMINDERS = [
         "timeout_message": "⚠️ OVERDUE ALERT: The dog is overdue for the {label} walk and feeding! No response received within {timeout} minutes.",
         "denial_message": "⚠️ Alert: The dog hasn't been taken care of for the {label} session!"
     },
+    {
+        "name": "take_meds",
+        "schedules": [
+            {"hour": 7, "minute": 30, "label": "morning"},
+            {"hour": 22, "minute": 0, "label": "evening"}
+        ],
+        "target_user_id": 143474592529252353,
+        "escalation_user_id": 343513966049492999,
+        "timeout_minutes": 120,
+        "messages": {
+            "morning": "Time to take your morning medication goober! 💊",
+            "evening": "Don't forget to take your evening medication goober! 💊"
+        },
+        "timeout_message": "⚠️ MEDICATION ALERT: The medication was not taken for the {label} session! No response received within {timeout} minutes. Lazzy is having dementia.",
+        "denial_message": "⚠️ MEDICATION ALERT: The medication was explicitly declined for the {label} session! Go beat Lazzy with a hammer!"
+    },
     # Example second reminder (can be activated by changing user IDs to real ones)
     # {
     #     "name": "medication",

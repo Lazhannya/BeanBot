@@ -43,13 +43,21 @@ async def on_ready():
             print(f"       Can send messages: {perms.send_messages}")
             print(f"       Can read history: {perms.read_message_history}")
     
-    # Sync slash commands
+    # Sync slash commands for both guilds and global (DM) usage
     try:
         print("Syncing slash commands...")
-        synced = await bot.tree.sync()
-        print(f"Synced {len(synced)} slash command(s)")
+        
+        # Sync guild commands (existing functionality)
+        guild_synced = await bot.tree.sync()
+        print(f"Synced {len(guild_synced)} guild slash command(s)")
+        
+        # Sync global commands for DM support
+        global_synced = await bot.tree.sync(guild=None)
+        print(f"Synced {len(global_synced)} global slash command(s) for DM support")
+        
     except Exception as e:
         print(f"Failed to sync slash commands: {e}")
+        logging.error(f"Slash command sync error: {e}", exc_info=True)
         
     print("Bot is ready and listening for messages!")
 

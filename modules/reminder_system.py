@@ -12,6 +12,7 @@ import asyncio
 import logging
 import pytz
 import importlib
+import time
 
 # Import reminder configuration
 import reminder_config
@@ -375,15 +376,95 @@ def validate_reminder_and_schedule(reminder_name: str, schedule_label: str = Non
         logger.error(f"Error in validate_reminder_and_schedule: {e}")
         return False, f"Validation error: {str(e)}", None, None
 
+# === DM CONTEXT UTILITIES ===
+
+def is_dm_context(interaction: discord.Interaction) -> bool:
+    """Check if interaction is happening in a DM context"""
+    return interaction.guild is None
+
+def get_context_info(interaction: discord.Interaction) -> dict:
+    """Get context information for logging and debugging"""
+    return {
+        'is_dm': is_dm_context(interaction),
+        'guild_id': interaction.guild.id if interaction.guild else None,
+        'guild_name': interaction.guild.name if interaction.guild else 'DM',
+        'channel_id': interaction.channel.id if interaction.channel else None,
+        'channel_type': str(interaction.channel.type) if interaction.channel else 'unknown',
+        'user_id': interaction.user.id,
+        'user_name': str(interaction.user)
+    }
+
+def is_owner_in_context(interaction: discord.Interaction, bot) -> bool:
+    """Check if user is bot owner, works in both guild and DM context"""
+    try:
+        # DM context: check against bot.owner_id directly
+        if is_dm_context(interaction):
+            return interaction.user.id == bot.owner_id
+        
+        # Guild context: check against interaction.client.owner_id (existing logic)
+        return interaction.user.id == interaction.client.owner_id
+        
+    except Exception as e:
+        logger.error(f"Error checking owner status: {e}")
+        return False
+
+def get_dm_error_message(command_name: str, is_owner: bool) -> str:
+    """Generate appropriate error message for DM context"""
+    if is_owner:
+        return f"✅ You can use `{command_name}` in DMs as the bot owner."
+    else:
+        return (
+            f"❌ Sorry, `{command_name}` is restricted to the bot owner in DMs for security.\n"
+            f"💡 Try using this command in a server where the bot is present instead."
+        )
+
+def handle_autocomplete_error(interaction: discord.Interaction, error: Exception, function_name: str) -> list[app_commands.Choice[str]]:
+    """Centralized error handling for autocomplete functions in DM context"""
+    context_info = get_context_info(interaction)
+    logger.error(f"Error in {function_name} - Context: {context_info}, Error: {error}")
+    
+    if is_dm_context(interaction):
+        return [
+            app_commands.Choice(name="❌ Error in DM autocomplete", value="dm_error"),
+            app_commands.Choice(name="💡 Try again or use guild", value="retry")
+        ]
+    else:
+        return [app_commands.Choice(name="❌ Autocomplete error", value="error")]
+
+def get_fallback_choices(interaction: discord.Interaction, choice_type: str) -> list[app_commands.Choice[str]]:
+    """Provide fallback autocomplete choices when configuration is unavailable"""
+    if choice_type == "reminder":
+        if is_dm_context(interaction):
+            return [
+                app_commands.Choice(name="🔄 Config loading... (DM)", value="loading"),
+                app_commands.Choice(name="💡 Try: dog_walking", value="dog_walking")
+            ]
+        else:
+            return [app_commands.Choice(name="🔄 Config loading...", value="loading")]
+    
+    elif choice_type == "timezone":
+        return [
+            app_commands.Choice(name="🌍 UTC (fallback)", value="UTC"),
+            app_commands.Choice(name="🌍 Europe/Paris", value="Europe/Paris"),
+            app_commands.Choice(name="🌍 America/New_York", value="America/New_York")
+        ]
+    
+    return [app_commands.Choice(name="❌ No options available", value="none")]
+
 # === AUTOCOMPLETE FUNCTIONS ===
 
 async def reminder_name_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
-    """Enhanced autocomplete function for reminder names with validation"""
+    """Enhanced autocomplete function for reminder names with DM support and validation"""
+    start_time = time.time()
     try:
-        # Enhanced error handling for config unavailable
+        # Log context for debugging DM functionality
+        context_info = get_context_info(interaction)
+        logger.debug(f"Reminder name autocomplete called - Context: {context_info}")
+        
+        # Enhanced error handling for config unavailable with DM support
         if not hasattr(reminder_config, 'REMINDERS') or not reminder_config.REMINDERS:
-            logger.warning("REMINDERS configuration not available for autocomplete")
-            return [app_commands.Choice(name="No reminders configured", value="none")]
+            logger.warning(f"REMINDERS configuration not available for autocomplete - DM context: {is_dm_context(interaction)}")
+            return get_fallback_choices(interaction, "reminder")
         
         choices = []
         for reminder in reminder_config.REMINDERS:
@@ -398,15 +479,32 @@ async def reminder_name_autocomplete(interaction: discord.Interaction, current: 
         if not choices and current.strip():
             choices.append(app_commands.Choice(name=f"No reminders match '{current}'", value="none"))
         
+        # DM context: Add helpful hint if in DM
+        if is_dm_context(interaction) and choices and len(choices) < 25:
+            choices.append(app_commands.Choice(name="💡 Using DM - all features available", value="dm_hint"))
+        
         # Limit to Discord's maximum of 25 choices
+        # Performance monitoring
+        end_time = time.time()
+        response_time = end_time - start_time
+        logger.debug(f"Returning {len(choices[:25])} reminder autocomplete choices for DM context: {is_dm_context(interaction)}, Response time: {response_time:.3f}s")
+        
+        # Warn if response is slow (Discord has 3-second limit)
+        if response_time > 2.0:
+            logger.warning(f"Slow autocomplete response in reminder_name_autocomplete: {response_time:.3f}s (DM: {is_dm_context(interaction)})")
+        
         return choices[:25]
     except Exception as e:
-        logger.error(f"Error in reminder_name_autocomplete: {e}")
-        return [app_commands.Choice(name="Error loading reminders", value="error")]
+        return handle_autocomplete_error(interaction, e, "reminder_name_autocomplete")
 
 async def schedule_label_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
-    """Enhanced autocomplete function for schedule labels based on selected reminder"""
+    """Enhanced autocomplete function for schedule labels with DM support"""
+    start_time = time.time()
     try:
+        # Log context for debugging DM functionality
+        context_info = get_context_info(interaction)
+        logger.debug(f"Schedule label autocomplete called - Context: {context_info}")
+        
         choices = []
         
         # Try to get the reminder name from the interaction (enhanced context awareness)
@@ -444,14 +542,29 @@ async def schedule_label_autocomplete(interaction: discord.Interaction, current:
                         choices.append(app_commands.Choice(name=display_name, value=label))
                         seen_labels.add(label)
         
+        # DM context: Add performance info if in DM and choices exist
+        if is_dm_context(interaction) and choices and len(choices) < 25:
+            choices.append(app_commands.Choice(name="🚀 DM autocomplete active", value="dm_active"))
+        
+        # Performance monitoring
+        end_time = time.time()
+        response_time = end_time - start_time
+        logger.debug(f"Returning {len(choices[:25])} schedule autocomplete choices for DM context: {is_dm_context(interaction)}, Response time: {response_time:.3f}s")
+        
+        if response_time > 2.0:
+            logger.warning(f"Slow autocomplete response in schedule_label_autocomplete: {response_time:.3f}s (DM: {is_dm_context(interaction)})")
+        
         return choices[:25]
     except Exception as e:
-        logger.error(f"Error in schedule_label_autocomplete: {e}")
-        return []
+        return handle_autocomplete_error(interaction, e, "schedule_label_autocomplete")
 
 async def timezone_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
-    """Enhanced autocomplete function for timezone names with popular suggestions first"""
+    """Enhanced autocomplete function for timezone names with DM support"""
     try:
+        # Log context for debugging DM functionality
+        context_info = get_context_info(interaction)
+        logger.debug(f"Timezone autocomplete called - Context: {context_info}")
+        
         # Enhanced: More comprehensive timezone list with regions
         popular_timezones = [
             'UTC', 'Europe/London', 'Europe/Paris', 'Europe/Berlin', 'Europe/Rome', 'Europe/Madrid',
@@ -488,10 +601,16 @@ async def timezone_autocomplete(interaction: discord.Interaction, current: str) 
         if not choices and current.strip():
             choices.append(app_commands.Choice(name=f"No timezone matches '{current}'", value="UTC"))
         
+        # DM context: Add helpful timezone info if in DM
+        if is_dm_context(interaction) and len(choices) < 24:  # Leave room for DM hint
+            choices.append(app_commands.Choice(name="🌍 DM timezone selection", value="dm_tz"))
+        
+        logger.debug(f"Returning {len(choices[:25])} timezone autocomplete choices for DM context: {is_dm_context(interaction)}")
         return choices[:25]
     except Exception as e:
-        logger.error(f"Error in timezone_autocomplete: {e}")
-        return [app_commands.Choice(name="UTC (fallback)", value="UTC")]
+        fallback = get_fallback_choices(interaction, "timezone")
+        logger.error(f"Error in timezone_autocomplete - DM context: {is_dm_context(interaction)}, returning fallback: {fallback}")
+        return fallback
 
 def setup(bot):
     """Create and register the reminder system"""
@@ -886,9 +1005,12 @@ def setup(bot):
         async def reload(self, interaction: discord.Interaction):
             """Reload reminder configuration - slash command version of !reloadreminders"""
             try:
-                # Check if user is bot owner
-                if interaction.user.id != interaction.client.owner_id:
-                    await interaction.response.send_message("❌ Only the bot owner can use this command.", ephemeral=True)
+                # Check if user is bot owner (DM-aware)
+                if not is_owner_in_context(interaction, interaction.client):
+                    context_info = get_context_info(interaction)
+                    error_msg = get_dm_error_message("/reminder reload", False)
+                    await interaction.response.send_message(error_msg, ephemeral=True)
+                    logger.warning(f"Permission denied for /reminder reload - User: {interaction.user.id}, Context: {context_info}")
                     return
                 
                 success, message = self.reminder_system.reload_config()
@@ -907,9 +1029,12 @@ def setup(bot):
         async def timeout(self, interaction: discord.Interaction, reminder: str, minutes: int):
             """Set reminder timeout - slash command version of !settimeout"""
             try:
-                # Check if user is bot owner
-                if interaction.user.id != interaction.client.owner_id:
-                    await interaction.response.send_message("❌ Only the bot owner can use this command.", ephemeral=True)
+                # Check if user is bot owner (DM-aware)
+                if not is_owner_in_context(interaction, interaction.client):
+                    context_info = get_context_info(interaction)
+                    error_msg = get_dm_error_message("/reminder timeout", False)
+                    await interaction.response.send_message(error_msg, ephemeral=True)
+                    logger.warning(f"Permission denied for /reminder timeout - User: {interaction.user.id}, Context: {context_info}")
                     return
                 
                 # Validate minutes
@@ -1010,6 +1135,10 @@ def setup(bot):
         @test.autocomplete('time')
         async def test_time_autocomplete(self, interaction: discord.Interaction, current: str):
             try:
+                # Log context for debugging DM functionality
+                context_info = get_context_info(interaction)
+                logger.debug(f"Dog test autocomplete called - Context: {context_info}")
+                
                 dog_reminder = next((r for r in reminder_config.REMINDERS if r['name'] == 'dog_walking'), None)
                 if not dog_reminder:
                     return []
@@ -1018,12 +1147,18 @@ def setup(bot):
                 for schedule in dog_reminder['schedules']:
                     label = schedule['label']
                     if current.lower() in label.lower():
-                        choices.append(app_commands.Choice(name=label, value=label))
+                        # Enhanced: Include time in display for clarity in DMs
+                        display_name = f"{label} ({schedule['hour']:02d}:{schedule['minute']:02d})"
+                        choices.append(app_commands.Choice(name=display_name, value=label))
                 
+                # DM context: Add DM indicator
+                if is_dm_context(interaction) and choices and len(choices) < 25:
+                    choices.append(app_commands.Choice(name="🐕 DM dog commands ready", value="dm_dog"))
+                
+                logger.debug(f"Returning {len(choices[:25])} dog schedule autocomplete choices for DM context: {is_dm_context(interaction)}")
                 return choices[:25]
             except Exception as e:
-                logger.error(f"Error in dog test autocomplete: {e}")
-                return []
+                return handle_autocomplete_error(interaction, e, "dog_test_autocomplete")
         
         @app_commands.command(name="status", description="Check dog reminder status")
         async def status(self, interaction: discord.Interaction):
@@ -1076,9 +1211,12 @@ def setup(bot):
                     await interaction.response.send_message(f"🌍 Current timezone: **{self.reminder_system.timezone}**")
                     return
                 
-                # Check if user is bot owner for setting timezone
-                if interaction.user.id != interaction.client.owner_id:
-                    await interaction.response.send_message("❌ Only the bot owner can change the timezone.", ephemeral=True)
+                # Check if user is bot owner for setting timezone (DM-aware)
+                if not is_owner_in_context(interaction, interaction.client):
+                    context_info = get_context_info(interaction)
+                    error_msg = get_dm_error_message("/dog timezone", False)
+                    await interaction.response.send_message(error_msg, ephemeral=True)
+                    logger.warning(f"Permission denied for /dog timezone - User: {interaction.user.id}, Context: {context_info}")
                     return
                 
                 # Try to set the timezone
@@ -1111,9 +1249,12 @@ def setup(bot):
         async def set_reminder(self, interaction: discord.Interaction, user: discord.Member):
             """Set dog reminder user - slash command version of !setdogreminder"""
             try:
-                # Check if user is bot owner
-                if interaction.user.id != interaction.client.owner_id:
-                    await interaction.response.send_message("❌ Only the bot owner can use this command.", ephemeral=True)
+                # Check if user is bot owner (DM-aware)
+                if not is_owner_in_context(interaction, interaction.client):
+                    context_info = get_context_info(interaction)
+                    error_msg = get_dm_error_message("/dog set-reminder", False)
+                    await interaction.response.send_message(error_msg, ephemeral=True)
+                    logger.warning(f"Permission denied for /dog set-reminder - User: {interaction.user.id}, Context: {context_info}")
                     return
                 
                 # Find dog_walking reminder
@@ -1139,9 +1280,12 @@ def setup(bot):
         async def set_owner(self, interaction: discord.Interaction, user: discord.Member):
             """Set dog owner - slash command version of !setdogowner"""
             try:
-                # Check if user is bot owner
-                if interaction.user.id != interaction.client.owner_id:
-                    await interaction.response.send_message("❌ Only the bot owner can use this command.", ephemeral=True)
+                # Check if user is bot owner (DM-aware)
+                if not is_owner_in_context(interaction, interaction.client):
+                    context_info = get_context_info(interaction)
+                    error_msg = get_dm_error_message("/dog set-owner", False)
+                    await interaction.response.send_message(error_msg, ephemeral=True)
+                    logger.warning(f"Permission denied for /dog set-owner - User: {interaction.user.id}, Context: {context_info}")
                     return
                 
                 # Find dog_walking reminder
@@ -1171,9 +1315,12 @@ def setup(bot):
         async def set_time(self, interaction: discord.Interaction, type: str, hour: int, minute: int = 0):
             """Set reminder time - slash command version of !setremindertime"""
             try:
-                # Check if user is bot owner
-                if interaction.user.id != interaction.client.owner_id:
-                    await interaction.response.send_message("❌ Only the bot owner can use this command.", ephemeral=True)
+                # Check if user is bot owner (DM-aware)
+                if not is_owner_in_context(interaction, interaction.client):
+                    context_info = get_context_info(interaction)
+                    error_msg = get_dm_error_message("/dog set-time", False)
+                    await interaction.response.send_message(error_msg, ephemeral=True)
+                    logger.warning(f"Permission denied for /dog set-time - User: {interaction.user.id}, Context: {context_info}")
                     return
                 
                 # Validate hour and minute
