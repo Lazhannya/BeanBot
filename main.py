@@ -224,7 +224,7 @@ async def testchannel(ctx, channel_id: int = None):
 # Run the bot
 try:
     print("Starting bot with token:", token[:5] + "..." if token else "None")
-    bot.run(token, log_level=logging.DEBUG)
+    bot.run(token, log_level=logging.INFO)
 except Exception as e:
     print(f"Error running bot: {e}")
     # Log the error to a file for debugging on the server

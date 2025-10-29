@@ -68,7 +68,7 @@ description: "Task list for Modular Reminder System implementation"
 - [x] T013 [US1] In `modules/reminder_system.py`, update `ReminderView.yes_button()` callback to use generalized reminder tracking (find by message_id, remove from pending_reminders)
 - [x] T014 [US1] In `modules/reminder_system.py`, verify logging for delivery and acknowledgment events includes reminder name and schedule label
 - [x] T015 [US1] Test reminder delivery: Add `!testreminder` command in `modules/reminder_system.py` accepting reminder name and optional schedule label parameters
-- [ ] T016 [US1] Regression test: Verify dog reminder works at 8:00, 13:00, 20:00 with acknowledge button functional
+- [x] T016 [US1] Regression test: Verify dog reminder works at 8:00, 13:00, 20:00 with acknowledge button functional
 
 **Checkpoint**: Basic reminder delivery and acknowledgment works - delivers immediate value
 
@@ -88,8 +88,8 @@ description: "Task list for Modular Reminder System implementation"
 - [x] T018 [US3] In `modules/reminder_system.py`, update `check_reminder_timeout()` to use config `timeout_message` with `{label}` placeholder replacement
 - [x] T019 [US3] In `modules/reminder_system.py`, update timeout tracking to use config `timeout_minutes` converted to seconds
 - [x] T020 [US3] In `modules/reminder_system.py`, verify logging for timeout and escalation events includes reminder name, schedule label, and timeout duration
-- [ ] T021 [US3] Test timeout: Use `!settimeout` command to set short timeout (1 minute), trigger test reminder, wait, verify escalation message sent
-- [ ] T022 [US3] Regression test: Verify dog reminder timeout works after 60 minutes with correct escalation message to owner
+- [x] T021 [US3] Test timeout: Use `!settimeout` command to set short timeout (1 minute), trigger test reminder, wait, verify escalation message sent
+- [x] T022 [US3] Regression test: Verify dog reminder timeout works after 60 minutes with correct escalation message to owner
 
 **Checkpoint**: Timeout escalation works - ensures accountability for unacknowledged reminders
 
@@ -107,8 +107,8 @@ description: "Task list for Modular Reminder System implementation"
 - [x] T024 [US2] In `modules/reminder_system.py`, update denial escalation message to use reminder name and schedule label from pending_reminders tracking
 - [x] T025 [US2] In `modules/reminder_system.py`, add support for optional config `denial_message` field (fallback to default if not present)
 - [x] T026 [US2] In `modules/reminder_system.py`, verify logging for denial and denial-escalation events includes complete reminder context
-- [ ] T027 [US2] Test denial: Trigger test reminder, click "No" button, verify immediate escalation notification sent
-- [ ] T028 [US2] Regression test: Verify dog reminder denial button sends escalation to owner with correct message
+- [x] T027 [US2] Test denial: Trigger test reminder, click "No" button, verify immediate escalation notification sent
+- [x] T028 [US2] Regression test: Verify dog reminder denial button sends escalation to owner with correct message
 
 **Checkpoint**: Denial escalation works - enables proactive status communication
 
@@ -128,8 +128,8 @@ description: "Task list for Modular Reminder System implementation"
 - [x] T032 [P] [US4] In `modules/reminder_system.py`, add `!reminderstatus` Discord command showing all active reminders with pending count
 - [x] T033 [P] [US4] In `modules/reminder_system.py`, add `!listreminders` Discord command displaying all configured reminders from config
 - [x] T034 [US4] Add second test reminder to `reminder_config.py` (medication example: morning/evening doses)
-- [ ] T035 [US4] Test config reload: Edit config to add reminder, run `!reloadreminders`, use `!testreminder` to verify new reminder works
-- [ ] T036 [US4] Test independence: Verify both dog_walking and medication reminders coexist without interference
+- [x] T035 [US4] Test config reload: Edit config to add reminder, run `!reloadreminders`, use `!testreminder` to verify new reminder works
+- [x] T036 [US4] Test independence: Verify both dog_walking and medication reminders coexist without interference
 
 **Checkpoint**: Configuration system complete - easy to add/modify reminders without code changes
 
@@ -146,9 +146,9 @@ description: "Task list for Modular Reminder System implementation"
 - [x] T041 [P] In `reminder_config.py`, add comprehensive comments explaining each config field and format requirements
 - [x] T042 [P] In `modules/reminder_system.py`, add module docstring explaining purpose, setup, and configuration
 - [x] T043 Verify all constitution gates: Module-First Architecture, functions <50 lines, comprehensive error handling, module logger, observability
-- [ ] T044 Full regression test: Run through all dog reminder scenarios (morning/noon/evening delivery, acknowledge, deny, timeout)
-- [ ] T045 Full feature test: Test all four user stories end-to-end with both dog_walking and medication reminders
-- [ ] T046 Review logs for completeness: Verify all events logged with timestamps, user info, and reminder context
+- [x] T044 Full regression test: Run through all dog reminder scenarios (morning/noon/evening delivery, acknowledge, deny, timeout)
+- [x] T045 Full feature test: Test all four user stories end-to-end with both dog_walking and medication reminders
+- [x] T046 Review logs for completeness: Verify all events logged with timestamps, user info, and reminder context
 
 **Checkpoint**: All features complete, documented, and validated
 
