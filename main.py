@@ -55,6 +55,14 @@ async def on_ready():
         global_synced = await bot.tree.sync(guild=None)
         print(f"Synced {len(global_synced)} global slash command(s) for DM support")
         
+        # Verify global commands were registered properly
+        if global_synced:
+            print("\n🔍 Global commands registered for DM usage:")
+            for cmd in global_synced:
+                print(f"  ✅ /{cmd.name}: {cmd.description}")
+            print("\n💡 Note: Global commands may take up to 1 hour to appear in Discord DMs")
+            print("💡 Try typing '/reminder' or '/dog' in DMs to check availability")
+        
     except Exception as e:
         print(f"Failed to sync slash commands: {e}")
         logging.error(f"Slash command sync error: {e}", exc_info=True)
@@ -214,6 +222,97 @@ async def ping(ctx):
 async def test(ctx):
     await ctx.send("I can see your messages! This is a test response.")
     print(f"Test command executed by {ctx.author}")
+
+@bot.command(name="dmstatus")
+@commands.is_owner()
+async def dm_status(ctx):
+    """Check DM command registration status and provide troubleshooting info"""
+    try:
+        # Check if we're in a DM
+        is_dm = isinstance(ctx.channel, discord.DMChannel)
+        
+        # Get command information
+        global_commands = await bot.tree.fetch_commands()
+        guild_commands = []
+        if ctx.guild:
+            guild_commands = await bot.tree.fetch_commands(guild=ctx.guild)
+        
+        status_msg = f"""
+🔍 **DM Command Status Report**
+
+**Current Context**: {'✅ Direct Message' if is_dm else '🏰 Guild Channel'}
+
+**Global Commands (DM-compatible)**: {len(global_commands)}
+"""
+        
+        if global_commands:
+            for cmd in global_commands:
+                status_msg += f"\n  ✅ `/{cmd.name}`: {cmd.description}"
+        else:
+            status_msg += "\n  ❌ No global commands registered"
+        
+        if not is_dm:
+            status_msg += f"\n\n**Guild Commands**: {len(guild_commands)}"
+            if guild_commands:
+                for cmd in guild_commands:
+                    status_msg += f"\n  🏰 `/{cmd.name}`: {cmd.description}"
+        
+        status_msg += """
+
+**🔧 Troubleshooting DM Slash Commands:**
+1. **Try typing `/` in a DM** - commands should appear in the dropdown
+2. **Wait for propagation** - Global commands take up to 1 hour to appear
+3. **Check autocomplete** - Type `/reminder test` and see if options appear
+4. **Restart Discord** - Sometimes helps refresh command cache
+
+**🚀 Expected DM Commands:**
+• `/reminder test` (with autocomplete for reminder names)
+• `/reminder status` 
+• `/reminder list`
+• `/dog test` (with time autocomplete)
+• `/dog status`
+
+**⚠️ DM Limitations:**
+• Only bot owner can use DM commands
+• Configuration commands work but are memory-only in DM context
+• Some guild-specific features may be limited
+"""
+        
+        await ctx.send(status_msg)
+        print(f"DM status check executed by {ctx.author} in {'DM' if is_dm else ctx.guild.name}")
+        
+    except Exception as e:
+        await ctx.send(f"❌ Error checking DM status: {str(e)}")
+        print(f"Error in dm_status command: {e}")
+
+@bot.command(name="resync")
+@commands.is_owner()
+async def force_resync(ctx):
+    """Force re-sync of slash commands (owner only)"""
+    try:
+        await ctx.send("🔄 Re-syncing slash commands...")
+        
+        # Sync guild commands
+        guild_synced = await bot.tree.sync()
+        
+        # Sync global commands
+        global_synced = await bot.tree.sync(guild=None)
+        
+        result_msg = f"""✅ **Command Sync Complete**
+
+🏰 **Guild Commands**: {len(guild_synced)} synced
+🌍 **Global Commands**: {len(global_synced)} synced
+
+💡 Global commands may take up to 1 hour to appear in DMs.
+💡 Try `!dmstatus` to check registration status.
+"""
+        
+        await ctx.send(result_msg)
+        print(f"Force resync executed by {ctx.author}")
+        
+    except Exception as e:
+        await ctx.send(f"❌ Error re-syncing commands: {str(e)}")
+        print(f"Error in force_resync command: {e}")
     
 @bot.event
 async def on_message_delete(message):

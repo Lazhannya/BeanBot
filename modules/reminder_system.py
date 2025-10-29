@@ -902,6 +902,14 @@ def setup(bot):
         async def test(self, interaction: discord.Interaction, reminder: str, schedule: str = None):
             """Test reminder delivery - slash command version of !testreminder"""
             try:
+                # Check DM permissions first (before deferring)
+                if is_dm_context(interaction) and not is_owner_in_context(interaction, interaction.client):
+                    context_info = get_context_info(interaction)
+                    error_msg = get_dm_error_message("/reminder test", False)
+                    await interaction.response.send_message(error_msg, ephemeral=True)
+                    logger.warning(f"Permission denied for /reminder test - User: {interaction.user.id}, Context: {context_info}")
+                    return
+                
                 # Defer response since this might take time
                 await interaction.response.defer()
                 
@@ -929,7 +937,10 @@ def setup(bot):
                 # Send the reminder
                 await self.reminder_system.send_reminder(reminder_config_obj, schedule_obj)
                 await interaction.followup.send(f"✅ Test reminder sent: **{reminder}** - *{schedule}*!")
-                logger.info(f"SLASH_COMMAND: /reminder test executed by {interaction.user} ({interaction.user.id}) - reminder: {reminder}, schedule: {schedule}")
+                
+                # Enhanced logging with DM context information
+                context_info = get_context_info(interaction)
+                logger.info(f"SLASH_COMMAND: /reminder test executed by {interaction.user} ({interaction.user.id}) - reminder: {reminder}, schedule: {schedule}, Context: {context_info}")
                 
             except Exception as e:
                 logger.error(f"Error in /reminder test: {e}", exc_info=True)
@@ -947,6 +958,14 @@ def setup(bot):
         async def status(self, interaction: discord.Interaction):
             """Show reminder system status - slash command version of !reminderstatus"""
             try:
+                # Check DM permissions (status is read-only, but still enforce owner-only in DMs)
+                if is_dm_context(interaction) and not is_owner_in_context(interaction, interaction.client):
+                    context_info = get_context_info(interaction)
+                    error_msg = get_dm_error_message("/reminder status", False)
+                    await interaction.response.send_message(error_msg, ephemeral=True)
+                    logger.warning(f"Permission denied for /reminder status - User: {interaction.user.id}, Context: {context_info}")
+                    return
+                
                 current_time = datetime.datetime.now(self.reminder_system.timezone)
                 pending_count = len(self.reminder_system.pending_reminders)
                 
@@ -969,7 +988,10 @@ def setup(bot):
                             status_message += f"• {reminder_name} - {schedule_label} ({int(time_since)} minutes ago)\n"
                 
                 await interaction.response.send_message(status_message)
-                logger.info(f"SLASH_COMMAND: /reminder status executed by {interaction.user} ({interaction.user.id})")
+                
+                # Enhanced logging with DM context information
+                context_info = get_context_info(interaction)
+                logger.info(f"SLASH_COMMAND: /reminder status executed by {interaction.user} ({interaction.user.id}), Context: {context_info}")
                 
             except Exception as e:
                 logger.error(f"Error in /reminder status: {e}", exc_info=True)
@@ -979,6 +1001,14 @@ def setup(bot):
         async def list_reminders(self, interaction: discord.Interaction):
             """List all configured reminders - slash command version of !listreminders"""
             try:
+                # Check DM permissions (list is read-only, but still enforce owner-only in DMs)
+                if is_dm_context(interaction) and not is_owner_in_context(interaction, interaction.client):
+                    context_info = get_context_info(interaction)
+                    error_msg = get_dm_error_message("/reminder list", False)
+                    await interaction.response.send_message(error_msg, ephemeral=True)
+                    logger.warning(f"Permission denied for /reminder list - User: {interaction.user.id}, Context: {context_info}")
+                    return
+                
                 if len(self.reminder_system.reminders) == 0:
                     await interaction.response.send_message("📋 No reminders configured.")
                     return
@@ -995,7 +1025,10 @@ def setup(bot):
                     message += f"  ⏱️ Timeout: {reminder['timeout_minutes']} minutes\n\n"
                 
                 await interaction.response.send_message(message)
-                logger.info(f"SLASH_COMMAND: /reminder list executed by {interaction.user} ({interaction.user.id})")
+                
+                # Enhanced logging with DM context information
+                context_info = get_context_info(interaction)
+                logger.info(f"SLASH_COMMAND: /reminder list executed by {interaction.user} ({interaction.user.id}), Context: {context_info}")
                 
             except Exception as e:
                 logger.error(f"Error in /reminder list: {e}", exc_info=True)
@@ -1068,6 +1101,14 @@ def setup(bot):
         async def help(self, interaction: discord.Interaction):
             """Show help for all reminder slash commands"""
             try:
+                # Check DM permissions (help is informational, but still enforce owner-only in DMs for consistency)
+                if is_dm_context(interaction) and not is_owner_in_context(interaction, interaction.client):
+                    context_info = get_context_info(interaction)
+                    error_msg = get_dm_error_message("/reminder help", False)
+                    await interaction.response.send_message(error_msg, ephemeral=True)
+                    logger.warning(f"Permission denied for /reminder help - User: {interaction.user.id}, Context: {context_info}")
+                    return
+                
                 help_message = (
                     "📋 **Reminder System Commands**\n\n"
                     
@@ -1090,7 +1131,10 @@ def setup(bot):
                 )
                 
                 await interaction.response.send_message(help_message, ephemeral=True)
-                logger.info(f"SLASH_COMMAND: /reminder help executed by {interaction.user} ({interaction.user.id})")
+                
+                # Enhanced logging with DM context information
+                context_info = get_context_info(interaction)
+                logger.info(f"SLASH_COMMAND: /reminder help executed by {interaction.user} ({interaction.user.id}), Context: {context_info}")
                 
             except Exception as e:
                 logger.error(f"Error in /reminder help: {e}", exc_info=True)
@@ -1109,6 +1153,14 @@ def setup(bot):
         async def test(self, interaction: discord.Interaction, time: str = "morning"):
             """Test dog reminder - slash command version of !testreminderdog"""
             try:
+                # Check DM permissions first (before deferring)
+                if is_dm_context(interaction) and not is_owner_in_context(interaction, interaction.client):
+                    context_info = get_context_info(interaction)
+                    error_msg = get_dm_error_message("/dog test", False)
+                    await interaction.response.send_message(error_msg, ephemeral=True)
+                    logger.warning(f"Permission denied for /dog test - User: {interaction.user.id}, Context: {context_info}")
+                    return
+                
                 await interaction.response.defer()
                 
                 # Find dog_walking reminder
@@ -1126,7 +1178,10 @@ def setup(bot):
                 
                 await self.reminder_system.send_reminder(dog_reminder, schedule)
                 await interaction.followup.send(f"✅ Test {time} dog reminder sent!")
-                logger.info(f"SLASH_COMMAND: /dog test executed by {interaction.user} ({interaction.user.id}) - time: {time}")
+                
+                # Enhanced logging with DM context information
+                context_info = get_context_info(interaction)
+                logger.info(f"SLASH_COMMAND: /dog test executed by {interaction.user} ({interaction.user.id}) - time: {time}, Context: {context_info}")
                 
             except Exception as e:
                 logger.error(f"Error in /dog test: {e}", exc_info=True)
@@ -1164,6 +1219,14 @@ def setup(bot):
         async def status(self, interaction: discord.Interaction):
             """Show dog reminder status - slash command version of !dogstatus"""
             try:
+                # Check DM permissions (status is read-only, but still enforce owner-only in DMs)
+                if is_dm_context(interaction) and not is_owner_in_context(interaction, interaction.client):
+                    context_info = get_context_info(interaction)
+                    error_msg = get_dm_error_message("/dog status", False)
+                    await interaction.response.send_message(error_msg, ephemeral=True)
+                    logger.warning(f"Permission denied for /dog status - User: {interaction.user.id}, Context: {context_info}")
+                    return
+                
                 dog_reminder = next((r for r in self.reminder_system.reminders if r['name'] == 'dog_walking'), None)
                 if not dog_reminder:
                     await interaction.response.send_message("❌ Dog walking reminder not found in configuration.")
@@ -1195,7 +1258,10 @@ def setup(bot):
                             status_message += f"• {schedule_label} ({int(time_since)} minutes ago)\n"
                 
                 await interaction.response.send_message(status_message)
-                logger.info(f"SLASH_COMMAND: /dog status executed by {interaction.user} ({interaction.user.id})")
+                
+                # Enhanced logging with DM context information
+                context_info = get_context_info(interaction)
+                logger.info(f"SLASH_COMMAND: /dog status executed by {interaction.user} ({interaction.user.id}), Context: {context_info}")
                 
             except Exception as e:
                 logger.error(f"Error in /dog status: {e}", exc_info=True)
@@ -1379,6 +1445,14 @@ def setup(bot):
         async def help(self, interaction: discord.Interaction):
             """Show help for all dog slash commands"""
             try:
+                # Check DM permissions (help is informational, but still enforce owner-only in DMs for consistency)
+                if is_dm_context(interaction) and not is_owner_in_context(interaction, interaction.client):
+                    context_info = get_context_info(interaction)
+                    error_msg = get_dm_error_message("/dog help", False)
+                    await interaction.response.send_message(error_msg, ephemeral=True)
+                    logger.warning(f"Permission denied for /dog help - User: {interaction.user.id}, Context: {context_info}")
+                    return
+                
                 help_message = (
                     "🐕 **Dog Reminder Commands**\n\n"
                     
@@ -1403,7 +1477,10 @@ def setup(bot):
                 )
                 
                 await interaction.response.send_message(help_message, ephemeral=True)
-                logger.info(f"SLASH_COMMAND: /dog help executed by {interaction.user} ({interaction.user.id})")
+                
+                # Enhanced logging with DM context information
+                context_info = get_context_info(interaction)
+                logger.info(f"SLASH_COMMAND: /dog help executed by {interaction.user} ({interaction.user.id}), Context: {context_info}")
                 
             except Exception as e:
                 logger.error(f"Error in /dog help: {e}", exc_info=True)
