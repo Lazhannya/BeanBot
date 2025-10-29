@@ -10,6 +10,8 @@ from dotenv import load_dotenv
 
 # Local modules
 from modules import reminder_system, how_is
+from modules.webhook_handler import WebhookHandler
+from modules.reminder_system import is_owner_in_context
 
 # Load environment variables from .env file
 load_dotenv()
@@ -77,6 +79,24 @@ async def on_message(message):
     if message.author == bot.user:
         print("Message is from the bot itself, ignoring")
         return
+
+    # Check for bot mentions and send webhook notification
+    if webhook_handler and webhook_handler.is_bot_mentioned(message, bot.user):
+        try:
+            # Check DM permissions before sending webhook
+            if webhook_handler._check_dm_permissions(message, bot):
+                print(f"Bot mentioned in message {message.id}, sending webhook notification")
+                success = await webhook_handler.send_mention_notification(message)
+                if success:
+                    print(f"✅ Webhook notification sent successfully for message {message.id}")
+                else:
+                    print(f"⚠️ Webhook notification failed for message {message.id}")
+            else:
+                context = "DM" if message.guild is None else "guild"
+                print(f"🔒 Webhook notification blocked for {context} message {message.id} - insufficient permissions")
+        except Exception as e:
+            print(f"❌ Error processing webhook notification: {e}")
+            logging.error(f"Webhook notification error for message {message.id}: {e}", exc_info=True)
 
     msg_content = message.content.lower()
     how_are_phrases = ["how are you", "how is", "hows it going", "how's it going", "how are"]
@@ -211,6 +231,15 @@ how_is_instance = how_is.setup(bot)
 # Create an instance of HowIsJoke for use in message handler
 from modules.how_is import HowIsJoke
 how_is_joke = HowIsJoke(bot)
+
+# Initialize webhook handler
+try:
+    webhook_handler = WebhookHandler()
+    print(f"Webhook handler initialized successfully")
+except Exception as e:
+    print(f"Warning: Failed to initialize webhook handler: {e}")
+    logging.error(f"Webhook handler initialization error: {e}", exc_info=True)
+    webhook_handler = None
 
 # Add some simple commands to test responsiveness
 @bot.command(name="ping")
