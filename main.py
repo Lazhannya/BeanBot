@@ -31,6 +31,27 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 @bot.event
 async def on_ready():
     print(f'Logged in as {bot.user}!')
+    
+    # Set bot owner_id for DM permissions
+    try:
+        # Manual override: Set to your actual Discord user ID
+        # This overrides the Discord application owner for DM webhook permissions
+        bot.owner_id = 143474592529252353  # Your Discord user ID
+        print(f'Bot owner_id manually set to: {bot.owner_id}')
+        
+        # Also fetch the application owner for logging
+        try:
+            app_info = await bot.application_info()
+            print(f'Discord application owner: {app_info.owner.id} ({app_info.owner.name})')
+            if bot.owner_id != app_info.owner.id:
+                print(f'Note: Using manual owner_id override for DM permissions')
+        except Exception as e:
+            print(f'Could not fetch application info: {e}')
+            
+    except Exception as e:
+        print(f'Warning: Could not set bot.owner_id: {e}')
+        logging.error(f"Failed to set bot.owner_id: {e}", exc_info=True)
+    
     print(f'Bot is in {len(bot.guilds)} guilds')
     for guild in bot.guilds:
         print(f" - {guild.name} (id: {guild.id})")

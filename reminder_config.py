@@ -42,7 +42,7 @@ REMINDERS = [
         "name": "dog_walking",
         "schedules": [
             {"hour": 8, "minute": 0, "label": "morning"},
-            {"hour": 13, "minute": 0, "label": "noon"},
+            {"hour": 14, "minute": 0, "label": "noon"},
             {"hour": 20, "minute": 0, "label": "evening"}
         ],
         "target_user_id": 343513966049492999,
